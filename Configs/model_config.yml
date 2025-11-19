@@ -1,0 +1,98 @@
+hardware_optimization:
+  memory_efficient: true
+  use_checkpointing: true
+  offload_to_cpu: true
+  clear_cache_freq: 50
+  
+  tile_size: 512           # Tamaño de tiles para procesamiento por partes
+  tile_overlap: 64         # Solapamiento entre tiles
+  progressive_loading: true # Cargar imágenes progresivamente
+  
+  use_separable_conv: false # Convs separables (más eficientes pero menos calidad)
+  channel_multiplier: 0.5   # Multiplicador de canales (0.5 = mitad de canales)
+  
+data_processing:
+  lazy_loading: true       # Cargar imágenes bajo demanda
+  cache_size: 2           # Solo cachear 2 imágenes
+  preload_data: false     # No precargar dataset completo
+  compress_in_memory: true # Comprimir datos en memoria
+  
+  aspect_ratio_preservation: true
+  resize_method: "lanczos"  # Mejor calidad de resize
+  normalize_per_image: false # Normalización por batch (más eficiente)# Configuración del modelo pix2pixHD
+model:
+  name: "pix2pixHD"
+  version: "1.0"
+  input_channels: 3    # <--- requerido por el validador
+  output_channels: 3
+  generator:
+    n_downsample_global: 4
+    n_blocks_global: 9
+    n_local_enhancers: 0
+    n_blocks_local: 3
+    input_nc: 3          # Canales de entrada (RGB)
+    output_nc: 3         # Canales de salida (RGB)
+    ngf: 32             # Reducido para ahorrar memoria (era 64)
+    n_downsample: 5     # 5 downsamples para manejar 2592x1944
+    n_blocks: 6         # Menos bloques para ahorrar memoria
+    norm_layer: "instance"  # Normalización instance (menos memoria que batch)
+    use_dropout: false  # Sin dropout para ahorrar memoria
+    padding_type: "reflect"  # Padding reflect
+    use_attention: false # Sin atención para ahorrar memoria
+    
+  discriminator:
+    num_D: 2
+    input_nc: 6         # Canales de entrada (imagen + label)
+    ndf: 64            # Número de filtros en la primera capa
+    n_layers: 3        # Número de capas en el discriminador
+    norm_layer: "instance"
+    use_sigmoid: false  # Usar sigmoid en la salida (para LSGAN usar false)
+    
+  multiscale:
+    enabled: true
+    num_D: 3           # Número de discriminadores
+    n_layers_D: 4      # Capas por discriminador
+    
+  feature_encoder:
+    enabled: false      # Deshabilitado para RTX A4000
+    input_nc: 3
+    output_nc: 256      # Reducido si se habilita
+    n_downsample: 3     # Reducido si se habilita
+    
+image:
+  size: [1944, 2592]   # Resolución original completa
+  channels: 3          # Número de canales
+  normalize: true      # Normalizar a [-1, 1]
+  
+data:
+  dataset_mode: "aligned"  # Modo del dataset: aligned, unaligned
+  load_size: [1944, 2592]  # Cargar en resolución original
+  crop_size: [1944, 2592]  # Sin crop, usar resolución completa
+  preprocess: "none"      # Sin redimensionamiento adicional
+  flip: false             # Sin flip para ahorrar memoria
+  center_crop: false      # Sin center crop
+  
+device:
+  use_gpu: true
+  gpu_ids: [0]         # Una sola GPU
+  num_workers: 2       # Reducido para ahorrar RAM del sistema
+  pin_memory: false    # Deshabilitado para ahorrar RAM
+  
+checkpoint:
+  save_dir: "./checkpoints"
+  save_epoch_freq: 10    # Menos frecuente para ahorrar tiempo/espacio
+  save_latest_freq: 1000  # Menos frecuente (era 5000)
+  keep_only_latest: true  # Solo mantener último checkpoint para ahorrar espacio
+  
+visualization:
+  display_freq: 1000     # Menos frecuente (era 400)
+  print_freq: 200       # Menos frecuente (era 100)
+  save_images: true     
+  max_images_save: 2    # Solo 2 imágenes por vez
+  image_format: "jpg"   # JPG para ahorrar espacio (vs PNG)
+  
+validation:
+  enabled: true
+  freq: 2000           # Menos frecuente para ahorrar tiempo
+  num_samples: 2       # Solo 2 muestras (era 10)
+  save_validation_images: false  # No guardar para ahorrar espacio

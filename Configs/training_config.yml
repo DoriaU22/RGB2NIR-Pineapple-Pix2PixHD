@@ -1,0 +1,148 @@
+training:
+  lr: 0.0001
+  niter: 570         # Igual a tu decay_start_epoch
+  niter_decay: 285   # Igual a tu decay_epochs
+  checkpoint_dir: ".models/checkpoints"
+  log_dir: "./results/training_logs"
+  sample_dir: "./results/validation/images"
+
+  batch_size: 1         # CRÍTICO: Solo 1 imagen por batch
+  beta1: 0.5
+  beta2: 0.999
+  num_workers: 4
+
+
+  optimizer:
+    type: "adam"        
+    lr_G: 0.0001       # Learning rate más bajo para estabilidad
+    lr_D: 0.0001       # Learning rate más bajo
+    beta1: 0.5         
+    beta2: 0.999       
+    weight_decay: 0.0001
+    
+  lr_scheduler:
+    enabled: true
+    type: "linear"      
+    decay_start_epoch: 150  # Inicio del decay más tardío
+    decay_epochs: 150   # Decay más largo
+    
+  losses:
+    # Pérdida GAN
+    gan_loss:
+      type: "lsgan"     # Tipo: lsgan, vanilla, wgangp
+      weight: 1.0
+      
+    # Pérdida L1/L2
+    reconstruction_loss:
+      type: "l1"        # Tipo: l1, l2, smooth_l1
+      weight: 100.0
+      
+    feature_loss:
+      enabled: false
+      type: "vgg19"
+      weight: 5.0       # Peso reducido si se habilita
+      layers: [7, 12]   # Solo capas intermedias si se habilita
+      
+
+    perceptual_loss:
+      enabled: false
+      weight: 0.5
+      
+    diversity_loss:
+      enabled: false
+      weight: 1.0
+      
+
+  regularization:
+    spectral_norm: true    # Normalización espectral
+    gradient_penalty: false # Gradient penalty para WGAN-GP
+    gp_weight: 10.0
+    
+
+  adversarial:
+    d_steps: 1            # Pasos del discriminador por paso del generador
+    g_steps: 1            # Pasos del generador
+    d_threshold: 0.8      # Umbral para entrenar discriminador
+    
+data:
+  train_rgb_dir: "./dataset/pix2pix_dataset/train/A"
+  train_nir_dir: "./dataset/pix2pix_dataset/train/B"
+  val_rgb_dir: "./dataset/pix2pix_dataset/val/A"
+  val_nir_dir: "./dataset/pix2pix_dataset/val/B"
+  num_workers: 1        # Solo 1 worker para ahorrar RAM
+  pin_memory: false     # Deshabilitado para ahorrar RAM
+  shuffle: true
+  drop_last: false      # No descartar último batch incompleto
+  prefetch_factor: 1    # Mínimo prefetch
+  load_size: 0
+  fine_size: 0
+
+
+# Configuración de logging
+logging:
+  log_dir: "./logs"
+  log_level: "INFO"
+  log_freq: 100         # Frecuencia de logging
+  
+  # Tensorboard/Wandb
+  tensorboard:
+    enabled: true
+    log_dir: "./runs"
+    
+  wandb:
+    enabled: false
+    project_name: "pix2pixHD"
+    entity: "your_username"
+    
+# Configuración de checkpoints
+checkpoints:
+  resume: false
+  resume_path: ""
+  save_best: true
+  save_last: true
+  monitor: "val_loss"   # Métrica para guardar mejor modelo
+  mode: "min"           # min o max para la métrica
+  
+# Configuración de early stopping
+early_stopping:
+  enabled: false
+  patience: 10
+  monitor: "val_loss"
+  mode: "min"
+  min_delta: 0.001
+  
+validation:
+  enabled: true
+  freq: 2000            # Menos frecuente para ahorrar tiempo
+  save_images: true
+  num_images: 2         # Solo 2 imágenes para validación
+  
+# Configuración de testing
+testing:
+  test_dir: "./datasets/test"
+  output_dir: "./results"
+  save_input: true
+  save_output: true
+  
+# Configuración de reproducibilidad
+reproducibility:
+  seed: 42
+  deterministic: true   # Para reproducibilidad exacta (puede ser más lento)
+  
+memory:
+  mixed_precision: true      # OBLIGATORIO para A4000
+  gradient_accumulation: 8   # Acumular 8 gradientes = simular batch_size 8
+  gradient_checkpointing: true  # CRÍTICO para ahorrar memoria
+  max_memory_mb: 15000      # Límite conservador para A4000
+  empty_cache_freq: 10      # Limpiar cache cada 10 iteraciones
+  gc_collect_freq: 50       # Garbage collection cada 50 iteraciones
+  
+  cpu_offload: true         # Mover tensores no utilizados a CPU
+  activation_checkpointing: true  # Checkpoint de activaciones
+  
+# Configuración de debugging
+debug:
+  enabled: false
+  grad_clip: 5.0        # Gradient clipping
+  nan_check: true       # Verificar NaN en gradientes
+  save_debug_images: false
